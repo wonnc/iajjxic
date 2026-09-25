@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>밀리터리 대시보드 - 전역일/월급일/연휴 계산기</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts (Updated to impact and modern body font) -->
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                        heading: ['Black Han Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        milGreen: '#10b981', 
+                        milGreenDark: '#059669', 
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: linear-gradient(45deg, #0f172a, #1e1b4b, #022c22, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .blob {
+            position: absolute;
+            filter: blur(60px);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: float 10s infinite ease-in-out;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #3b82f6; }
+        .blob-2 { bottom: -10%; right: -10%; width: 60vw; height: 60vw; background: #10b981; animation-delay: -5s; }
+        .blob-3 { top: 40%; left: 30%; width: 40vw; height: 40vw; background: #8b5cf6; animation-delay: -2s; opacity: 0.4; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(30px) scale(1.1); }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .glass-input:focus {
+            border-color: rgba(16, 185, 129, 0.8);
+            outline: none;
+        }
+
+        /* Custom progress bar animation */
+        .progress-bar-fill {
+            transition: width 1s ease-in-out;
+        }
+        /* Hide scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 pb-20 flex justify-center text-slate-100">
+
+    <!-- 리퀴드 배경 컴포넌트 -->
+    <div class="liquid-bg"></div>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="w-full max-w-md mx-auto space-y-6 relative z-10">
+        
+        <header class="relative flex flex-col items-center justify-center py-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-heading tracking-wide text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] leading-tight">
+                전역을 향해,<br>거침없이 전진! 🫡
+            </h1>
+            <p class="text-sm text-slate-300 mt-4 font-medium bg-black/20 px-4 py-1.5 rounded-full backdrop-blur-sm" id="current-date-display">오늘 날짜 로딩중...</p>
+            
+            <button onclick="toggleSettings()" class="absolute top-6 right-0 p-2.5 glass-panel rounded-full hover:bg-white/10 transition" aria-label="설정">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+
+        <div id="settings-panel" class="hidden glass-panel rounded-3xl p-6 transition-all">
+            <h2 class="text-xl font-heading mb-5 flex items-center tracking-wide text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-milGreen" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                </svg>
+                복무 일자 설정
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-300 mb-1.5 font-medium">입대일</label>
+                    <input type="date" id="enlist-date" class="w-full glass-input rounded-xl p-3 transition">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-300 mb-1.5 font-medium">전역일</label>
+                    <input type="date" id="discharge-date" class="w-full glass-input rounded-xl p-3 transition">
+                </div>
+                <button onclick="saveDates()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] mt-4">
+                    저장하기
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-7 relative overflow-hidden">
+            <div class="absolute -top-4 -right-4 p-4 opacity-10 rotate-12 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                </svg>
+            </div>
+            
+            <h2 class="text-sm font-semibold text-slate-300 mb-2 tracking-wider">전역까지</h2>
+            <div class="flex items-baseline space-x-2 mb-5">
+                <span id="dday-main" class="text-6xl font-heading text-white drop-shadow-md">D-?</span>
+                <span id="dday-sub" class="text-lg text-slate-300 font-medium">...</span>
+            </div>
+
+            <div class="mb-2.5 flex justify-between text-sm font-medium">
+                <span class="text-emerald-400 font-bold tracking-wide" id="percent-text">0.00%</span>
+                <span class="text-slate-300" id="days-info">0일 / 0일</span>
+            </div>
+            
+            <!-- Progress Bar with Glass effect -->
+            <div class="w-full bg-black/30 rounded-full h-4 mb-5 shadow-inner overflow-hidden border border-white/10 backdrop-blur-sm">
+                <div id="progress-bar" class="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 h-4 rounded-full progress-bar-fill relative shadow-[0_0_10px_rgba(52,211,153,0.5)]" style="width: 0%">
+                    <div class="absolute top-0 left-0 w-full h-full bg-white/20 rounded-full"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-between text-xs text-slate-400 font-medium bg-black/20 p-3 rounded-xl backdrop-blur-sm">
+                <span id="enlist-display">입대: -</span>
+                <span id="discharge-display">전역: -</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 md:gap-5">
+            
+            <div class="glass-panel rounded-3xl p-5 md:p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="bg-blue-500/20 p-2.5 rounded-xl text-blue-300 border border-blue-500/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <h3 class="font-bold text-slate-200">월급날</h3>
+                </div>
+                <div>
+                    <div id="payday-dday" class="text-4xl font-heading text-white mb-1.5 drop-shadow-md">D-?</div>
+                    <div id="payday-date" class="text-sm text-slate-300 font-medium">매월 10일</div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-3xl p-5 md:p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="bg-red-500/20 p-2.5 rounded-xl text-red-300 border border-red-500/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <h3 class="font-bold text-slate-200">다음 연휴</h3>
+                </div>
+                <div>
+                    <div id="holiday-dday" class="text-4xl font-heading text-white mb-1.5 drop-shadow-md">D-?</div>
+                    <div id="holiday-name" class="text-sm text-slate-300 font-medium truncate">계산중...</div>
+                </div>
+            </div>
+
+        </div>
+        
+    </div>
+
+    <script>
+        // 2026 하반기 ~ 2027 공휴일 데이터
+        const HOLIDAYS = [
+            { name: "개천절", date: "2026-10-03" },
+            { name: "한글날", date: "2026-10-09" },
+            { name: "크리스마스", date: "2026-12-25" },
+            { name: "신정", date: "2027-01-01" },
+            { name: "설날 연휴", date: "2027-02-06" },
+            { name: "설날", date: "2027-02-07" },
+            { name: "설날 연휴", date: "2027-02-08" },
+            { name: "대체공휴일(설날)", date: "2027-02-09" },
+            { name: "삼일절", date: "2027-03-01" },
+            { name: "어린이날", date: "2027-05-05" },
+            { name: "부처님오신날", date: "2027-05-13" },
+            { name: "현충일", date: "2027-06-06" },
+            { name: "광복절", date: "2027-08-15" },
+            { name: "추석 연휴", date: "2027-09-14" },
+            { name: "추석", date: "2027-09-15" },
+            { name: "추석 연휴", date: "2027-09-16" },
+            { name: "개천절", date: "2027-10-03" },
+            { name: "한글날", date: "2027-10-09" },
+            { name: "크리스마스", date: "2027-12-25" }
+        ];
+
+        // 유틸리티: 두 날짜 사이의 일수 계산 (자정 기준)
+        function getDaysDiff(date1, date2) {
+            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+            const diffTime = d2.getTime() - d1.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // 유틸리티: 날짜 포맷 (YYYY.MM.DD)
+        function formatDate(dateString) {
+            if (!dateString) return "-";
+            const d = new Date(dateString);
+            return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // 숫자 카운트업 애니메이션 함수
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                // 진행도 (0 ~ 1)
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                // easeOut 효과 (점점 느려지게)
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentVal = (easeProgress * (end - start) + start);
+                
+                obj.textContent = `${currentVal.toFixed(2)}% 진행`;
+                
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.textContent = `${end.toFixed(2)}% 진행`;
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // 초기화 및 데이터 로드
+        function init() {
+            const today = new Date();
+            
+            // 오늘 날짜 표시
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('current-date-display').textContent = today.toLocaleDateString('ko-KR', options);
+
+            // 로컬 스토리지에서 날짜 불러오기
+            const savedEnlist = localStorage.getItem('mil_enlist_date');
+            const savedDischarge = localStorage.getItem('mil_discharge_date');
+
+            if (savedEnlist && savedDischarge) {
+                document.getElementById('enlist-date').value = savedEnlist;
+                document.getElementById('discharge-date').value = savedDischarge;
+                updateDashboard(savedEnlist, savedDischarge);
+            } else {
+                // 설정이 없으면 설정 패널 열기
+                document.getElementById('settings-panel').classList.remove('hidden');
+                document.getElementById('dday-main').textContent = "설정 필요";
+                document.getElementById('dday-sub').textContent = "날짜를 입력해주세요";
+            }
+
+            calculatePayday(today);
+            calculateNextHoliday(today);
+        }
+
+        // 대시보드 계산 및 UI 업데이트
+        function updateDashboard(enlistStr, dischargeStr) {
+            const today = new Date();
+            const enlistDate = new Date(enlistStr);
+            const dischargeDate = new Date(dischargeStr);
+
+            document.getElementById('enlist-display').textContent = `입대: ${formatDate(enlistStr)}`;
+            document.getElementById('discharge-display').textContent = `전역: ${formatDate(dischargeStr)}`;
+
+            const totalDays = getDaysDiff(enlistDate, dischargeDate);
+            const servedDays = getDaysDiff(enlistDate, today);
+            const remainingDays = getDaysDiff(today, dischargeDate);
+
+            let percent = (servedDays / totalDays) * 100;
+            
+            // 예외 처리 (입대 전, 전역 후)
+            if (servedDays < 0) {
+                percent = 0;
+                document.getElementById('dday-main').textContent = `D-${Math.abs(servedDays)}`;
+                document.getElementById('dday-sub').textContent = "입대 전";
+                document.getElementById('days-info').textContent = `총 ${totalDays}일 예정`;
+            } else if (remainingDays <= 0) {
+                percent = 100;
+                document.getElementById('dday-main').textContent = `D+${Math.abs(remainingDays)}`;
+                document.getElementById('dday-sub').textContent = "전역을 축하합니다!";
+                document.getElementById('days-info').textContent = `총 ${totalDays}일 복무 완료`;
+            } else {
+                document.getElementById('dday-main').textContent = `D-${remainingDays}`;
+                document.getElementById('dday-sub').textContent = "남음";
+                document.getElementById('days-info').textContent = `총 ${totalDays}일 중 ${remainingDays}일 남음`;
+            }
+
+            // 퍼센트 숫자 카운트업 애니메이션 (1초 동안 진행)
+            animateValue("percent-text", 0, percent, 1000);
+            
+            // 게이지바 애니메이션 지연 적용 (CSS transition 1초와 동기화)
+            document.getElementById('progress-bar').style.width = '0%'; // 애니메이션 시작 전 0으로 초기화
+            setTimeout(() => {
+                document.getElementById('progress-bar').style.width = `${Math.min(Math.max(percent, 0), 100)}%`;
+            }, 50);
+        }
+
+        // 월급날 계산 로직 (매월 10일 기준)
+        function calculatePayday(today) {
+            let currentYear = today.getFullYear();
+            let currentMonth = today.getMonth(); // 0-indexed
+            let date = today.getDate();
+
+            let nextPayday;
+            
+            if (date <= 10) {
+                // 이번 달 10일이 월급날
+                nextPayday = new Date(currentYear, currentMonth, 10);
+            } else {
+                // 다음 달 10일이 월급날
+                nextPayday = new Date(currentYear, currentMonth + 1, 10);
+            }
+
+            const diff = getDaysDiff(today, nextPayday);
+            
+            if (diff === 0) {
+                document.getElementById('payday-dday').textContent = "D-Day!";
+                document.getElementById('payday-dday').classList.add('text-emerald-400');
+            } else {
+                document.getElementById('payday-dday').textContent = `D-${diff}`;
+                document.getElementById('payday-dday').classList.remove('text-emerald-400');
+            }
+            document.getElementById('payday-date').textContent = formatDate(nextPayday.toISOString().split('T')[0]);
+        }
+
+        // 다음 공휴일 계산 로직
+        function calculateNextHoliday(today) {
+            // 자정 기준으로 비교하기 위해 시간 초기화
+            const todayReset = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            
+            let nextHoliday = null;
+            let daysLeft = -1;
+
+            for (let i = 0; i < HOLIDAYS.length; i++) {
+                const holidayDate = new Date(HOLIDAYS[i].date);
+                if (holidayDate >= todayReset) {
+                    nextHoliday = HOLIDAYS[i];
+                    daysLeft = getDaysDiff(todayReset, holidayDate);
+                    break;
+                }
+            }
+
+            if (nextHoliday) {
+                if (daysLeft === 0) {
+                    document.getElementById('holiday-dday').textContent = "D-Day!";
+                    document.getElementById('holiday-dday').classList.add('text-red-400');
+                } else {
+                    document.getElementById('holiday-dday').textContent = `D-${daysLeft}`;
+                    document.getElementById('holiday-dday').classList.remove('text-red-400');
+                }
+                document.getElementById('holiday-name').textContent = `${nextHoliday.name} (${formatDate(nextHoliday.date)})`;
+            } else {
+                document.getElementById('holiday-dday').textContent = "-";
+                document.getElementById('holiday-name').textContent = "업데이트 예정";
+            }
+        }
+
+        // 설정 패널 토글
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        // 날짜 저장 및 리렌더링
+        function saveDates() {
+            const enlistStr = document.getElementById('enlist-date').value;
+            const dischargeStr = document.getElementById('discharge-date').value;
+
+            if (!enlistStr || !dischargeStr) {
+                alert("입대일과 전역일을 모두 선택해주세요."); // In real app use custom modal, fallback to basic check here.
+                return;
+            }
+
+            if (new Date(enlistStr) >= new Date(dischargeStr)) {
+                alert("전역일은 입대일보다 늦어야 합니다.");
+                return;
+            }
+
+            localStorage.setItem('mil_enlist_date', enlistStr);
+            localStorage.setItem('mil_discharge_date', dischargeStr);
+            
+            updateDashboard(enlistStr, dischargeStr);
+            toggleSettings(); // 저장 후 닫기
+        }
+
+        // Run init on load
+        window.onload = init;
+    </script>
+</body>
+</html>
